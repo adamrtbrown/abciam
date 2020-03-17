@@ -1,0 +1,33 @@
+version: '2'
+services:
+  db:
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      - MYSQL_DATABASE=user_db
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_USER=dev
+      - MYSQL_PASSWORD=dev
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+  
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+  
+  dev:
+    image: node:12
+    volumes:
+      - ./src:/usr/src/service
+
+    working_dir: /usr/src/service
+    ports:
+      - 8082:8082
+    command: bash -c "ls && echo "next" && echo && npm install && npm run dev"
+
+
