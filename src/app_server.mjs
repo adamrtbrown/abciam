@@ -1,70 +1,33 @@
-import http from 'http';
-import url from 'url';
-//import UserService from './lib/UserService'
-import fs from 'fs';
+import express from 'express'
+import dotenv from 'dotenv'
+import bodyParser from 'body-parser'
+import abciam from './abciam/abciam.mjs'
 
-function getResource(path) {
-    let path_parts = path.split("/");
-    let version = path_parts[0];
-    let resource_name = [];
-    for(let i = 1; i < path_parts.length; i += 2) {
-        resource_name.push(path_parts[i]);
-    }
-    return resource_name.join(" ");
-}
-fs.readFile('forms.html', function (err, formHTML) {
-    http.createServer(function (req, res) {
-        // req.method;
-        // req.url;
-        let context = {};
-        let query = url.parse(req.url, true).query;
-        let path = url.parse(req.url, true).pathname;
+dotenv.config({path: './.env'});
 
-        let full_request_path = [req.method, getResource(path)].join(" ").trim();
-        let body = '';
-        //console.log(full_request_path);
-        req.on('data', chunk => {
-            body += chunk.toString(); // convert Buffer to string
-        });
-        req.on('end', async () => {
-            body = (body === '') ? {} : JSON.parse(body);
-            let event = body;
-            event.path = path;
-            event.headers = req.headers;
-            let response = {
-                "statusCode": 400,
-                "headers": {"Content-Type": "application/json"},
-                "body": "{\"error_message\": \"Not found.\"}"
-            }
-            console.log("jj");
-            switch (full_request_path) {
-                case "GET":
-                    response = {
-                        "statusCode": 200,
-                        "headers": {"Content-Type": "text/html"},
-                        "body": formHTML
-                    }
-                    break;
-                case "POST user" :
-                    response = UserService.createUser(event, context);
-                    break;
-                case "PUT user" :
-                    response = UserService.updateUser(event, context);
-                    break;
-                case "POST app" :
-                    response = await UserService.createApp(event, context);
-                    break;
-                case "PUT app" :
-                    console.log("api: PUT app");
-                    response = UserService.updateApp(event, context);
-                    break;
-                default : 
-                    break;
-            }
-            console.log(response);
-            res.writeHead(response.statusCode, response.headers);
-            res.end(response.headers["Content-Type"] === "text/html" ? response.body : JSON.stringify(response.body));
-        });
-    }).listen(8082);
-    console.log("Listening on 8082");
+let port = process.env.SERVER_PORT;
+let app = express();
+
+app.use(function(req, res, next){
+  console.log("REQ: " + req.path);
+  next();
+})
+app.use(bodyParser.urlencoded({extended:false}));
+app.use(bodyParser.json());
+app.use(express.static('build'))
+
+app.get('/test', function(req, res){
+  res.json({test:1});
 });
+app.post('/auth', async function(req, res){
+  console.log("in auth");
+  let id_token = req.body.id_token;
+  let provider = req.body.provider;
+  let app_id = req.body.app_id;
+  let abc = new abciam();
+  console.log("getting user");
+  let user = await abc.getAuth(id_token, provider, app_id);
+  console.log("user",user)
+  res.json({"user": user});
+});
+app.listen(port, () => console.log(`Listening on ${port}`));

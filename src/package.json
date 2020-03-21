@@ -4,15 +4,23 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
     "dev": "node --experimental-modules app_server.mjs"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^8.2.0",
     "fs": "0.0.1-security",
+    "googleapis": "^48.0.0",
     "http": "0.0.0",
+    "jwk-to-pem": "^2.0.3",
     "mysql": "^2.18.1",
-    "url": "^0.11.0"
+    "url": "^0.11.0",
+    "uuid": "^7.0.2"
+  },
+  "type": "module",
+  "exports": {
+    "./abciam": "./abciam/abciam.mjs"
   }
 }
