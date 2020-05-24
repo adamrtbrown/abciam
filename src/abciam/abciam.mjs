@@ -17,18 +17,30 @@ class ABCIAM {
   
   async getAuth(id_token, provider, app_id) {
     //var res = await this.testFunction();
+    let return_default = {'token': false};
     try{
       console.log("ID TOKEN:\n",jwt.decode(id_token, {complete:true}));
       await this.verifyToken(id_token, provider);
       await this.verifyAppId(app_id);
-      this.getUser();
+      let user = this.getUser();
+      let token = this.getToken(user);
+      return token;
     }
     catch(err) {
       return err;
     }
-    return true;
   }
-
+  async getToken(user) {
+    let expiry = Math.round(new Date().getTime() / 1000) + 864000;
+    let claims = {
+      'user': user,
+      'expiry': expiry
+    }
+    let result = await this.db.query('SELECT `private` FROM `signing_keys` WHERE `kid` = 1');
+    let private_key = this.certToPEM(result.results[0].private);
+    let token = jwt.sign(claims, private_key, {algorithm: 'RS256'});
+    return token;
+  }
   async verifyToken(id_token, provider) {
     return new Promise(async (resolve)=> {
       let uvt = "";
@@ -121,7 +133,7 @@ class ABCIAM {
 
   async retrieveUser(user_id, app_id) {
     let user = false;
-    let query = "SELECT uuid FROM `users` WHERE `app_id` = ? AND `user_id` = ? LIMIT 1";
+    let query = "SELECT uid FROM `users` WHERE `app_id` = ? AND `user_id` = ? LIMIT 1";
     let result = await this.db.query(query, [app_id, user_id]);
     let record = result.results;
     console.log(result);
@@ -140,7 +152,7 @@ class ABCIAM {
     }
     return {"uuid": unique_id}
   }
-  
+
   async testFunction() {
     return new Promise(async (resolve) => {
     let query = "SELECT kid, public, private FROM signing_keys LIMIT 1";

@@ -20,14 +20,14 @@ services:
     ports:
       - 8080:8080
   
-  dev:
-    image: node:12
-    volumes:
-      - ./src:/usr/src/service
-
-    working_dir: /usr/src/service
-    ports:
-      - 8082:8082
-    command: bash -c "ls && echo "next" && echo && npm install && npm run dev"
+ # dev:
+ #   image: node:12
+ #   volumes:
+ #     - ./src:/usr/src/service
+#
+#    working_dir: /usr/src/service
+#    ports:
+#      - 8082:8082
+#    command: bash -c "ls && echo "next" && echo && npm install && npm run dev"
 
 
