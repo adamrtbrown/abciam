@@ -19,21 +19,26 @@ app.use(express.static('build'))
 app.get('/test', function(req, res){
   res.json({test:1});
 });
-app.post('/auth', async function(req, res){
+app.post('/login', async function(req, res){
   try {
-  console.log("in auth");
-  let id_token = req.body.id_token;
-  let provider = req.body.provider;
-  let app_id = req.body.app_id;
-  let abc = new abciam();
-  console.log("app_id", app_id);
-  console.log("getting user");
-  let token = await abc.getAuth(id_token, provider, app_id);
-  console.log("user",token)
-  res.json({"token": token});
+    console.log("in auth");
+    let id_token = req.body.id_token;
+    let provider = req.body.provider;
+    let app_id = req.body.app_id;
+    let abc = new abciam();
+    console.log("app_id", app_id);
+    console.log("getting user");
+    let token = await abc.login(id_token, provider, app_id);
+    console.log("user",token)
+    res.json({"token": token});
   } catch (err) {
     console.log(err);
     res.json({err:1});
   }
 });
+
+app.post('/logout');
+
+app.refresh('/refresh');
+
 app.listen(port, () => console.log(`Listening on ${port}`));

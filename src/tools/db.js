@@ -8,11 +8,6 @@ class DB {
   async createConnection() {
     return new Promise(
       (resolve, reject) => {
-        console.log("Creating connection: ",{
-          host: process.env.DB_HOST,
-          user: process.env.DB_USER,
-          password: process.env.DB_PASSWORD
-        });
         var conn = mysql.createConnection({
           host: process.env.DB_HOST,
           user: process.env.DB_USER,
@@ -31,11 +26,9 @@ class DB {
     return new Promise(async (resolve) => {
       if(this.conn === false) {
         try {
-          console.log("Creating connection");
           this.conn = await this.createConnection();
-          console.log("Connection created");
         } catch(err) {
-          console.log("DB Connection Error: ", err);
+          console.error("DB Connection Error: ", err);
           throw err;
         }
       }

@@ -15,12 +15,12 @@ class ABCIAM {
     this.google_config = "https://accounts.google.com/.well-known/openid-configuration";
   }
   
-  async getAuth(id_token, provider, app_id) {
+  async login(id_token, provider, app_id) {
     //var res = await this.testFunction();
     let return_default = {'token': false};
     try{
       console.log("ID TOKEN:\n",jwt.decode(id_token, {complete:true}));
-      await this.verifyToken(id_token, provider);
+      await this.verifyIDToken(id_token, provider);
       await this.verifyAppId(app_id);
       let user = this.getUser();
       let token = this.getToken(user);
@@ -30,18 +30,31 @@ class ABCIAM {
       return err;
     }
   }
+
+  logout(token, all) {
+    //Deletes token
+    //returns true;
+  }
+
+  refresh(token) {
+    //returns token or false
+  }
+
+
   async getToken(user) {
     let expiry = Math.round(new Date().getTime() / 1000) + 864000;
     let claims = {
       'user': user,
-      'expiry': expiry
+      'exp': expiry,
+      'iat': Math.round(new Date().getTime() / 1000),
+      'sub' : "refresh"
     }
-    let result = await this.db.query('SELECT `private` FROM `signing_keys` WHERE `kid` = 1');
-    let private_key = this.certToPEM(result.results[0].private);
-    let token = jwt.sign(claims, private_key, {algorithm: 'RS256'});
+    let result = await this.db.query('SELECT `latest` FROM `signing_keys` LIMIT 1');
+    let key = result.results[0].latest;
+    let token = jwt.sign(claims, private_key, {algorithm: 'HS256'});
     return token;
   }
-  async verifyToken(id_token, provider) {
+  async verifyIDToken(id_token, provider) {
     return new Promise(async (resolve)=> {
       let uvt = "";
       let verified = false
