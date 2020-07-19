@@ -1,6 +1,12 @@
+import uuid from 'uuid';
+import DB from '../tools/db.mjs'
+import axios from 'axios'
+import jwt from 'jsonwebtoken'
+import jwkToPem from 'jwk-to-pem'
 class ABCIAM {
     constructor(app_id, app_secret) {
         this.app_id = validateAppId(app_id, app_secret);
+        this.database_driver = null;
     }
     login(id_token, provider, app_id) {
         let return_default = {'token': false};
@@ -117,6 +123,15 @@ class ABCIAM {
         cert = header + body + footer;
         return cert;
     }
+    get db(){
+        if(this.database_driver === null) {
+            this.database_driver = new DB();
+        } 
+        return this.database_driver;
+    }
+    set db(driver) {
+        this.database_driver = driver;
+    }
     //request handler
     //validate login id_token
     //create user
@@ -129,7 +144,8 @@ class ABCIAM {
 import axios from 'axios';
 class ABCIAMAppServer {
     constructor() {
-        this.token = null;
+        this.refreshToken = null;
+        this.accessToken = null;
         this.ABCIAM_URL = "";
         this.app_id_data = null;
     }

@@ -1,7 +1,7 @@
 import express from 'express'
 import dotenv from 'dotenv'
 import bodyParser from 'body-parser'
-import abciam from './abciam/abciam.mjs'
+import ABCIAM from './abciam/ABCIAM.js'
 
 dotenv.config({path: './.env'});
 
@@ -25,7 +25,7 @@ app.post('/login', async function(req, res){
     let id_token = req.body.id_token;
     let provider = req.body.provider;
     let app_id = req.body.app_id;
-    let abc = new abciam();
+    let abc = new ABCIAM();
     console.log("app_id", app_id);
     console.log("getting user");
     let token = await abc.login(id_token, provider, app_id);
