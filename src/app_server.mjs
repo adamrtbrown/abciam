@@ -1,7 +1,7 @@
 import express from 'express'
 import dotenv from 'dotenv'
 import bodyParser from 'body-parser'
-import abciam from './abciam/abciam.mjs'
+import abciam from './abciam/ABCIAM.js'
 
 dotenv.config({path: './.env'});
 
@@ -25,7 +25,8 @@ app.post('/login', async function(req, res){
     let id_token = req.body.id_token;
     let provider = req.body.provider;
     let app_id = req.body.app_id;
-    let abc = new abciam();
+    let app_secret = req.body.app_secret;
+    let abc = new ABCIAM(app_id, app_secret);
     console.log("app_id", app_id);
     console.log("getting user");
     let token = await abc.login(id_token, provider, app_id);
@@ -37,8 +38,12 @@ app.post('/login', async function(req, res){
   }
 });
 
-app.post('/logout');
+app.post('/logout', function(req, res){
+  console.log("logout");
+});
 
-app.refresh('/refresh');
+app.post('/refresh', function(req, res){
+  console.log("refresh");
+});
 
 app.listen(port, () => console.log(`Listening on ${port}`));

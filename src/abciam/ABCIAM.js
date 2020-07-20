@@ -2,7 +2,7 @@ class ABCIAM {
     constructor(app_id, app_secret) {
         this.app_id = validateAppId(app_id, app_secret);
     }
-    login(id_token, provider, app_id) {
+    async login(id_token, provider, app_id) {
         let return_default = {'token': false};
         try{
             console.log("ID TOKEN:\n",jwt.decode(id_token, {complete:true}));
@@ -126,7 +126,6 @@ class ABCIAM {
     //invalidate all
 }
 
-import axios from 'axios';
 class ABCIAMAppServer {
     constructor() {
         this.token = null;
@@ -139,7 +138,7 @@ class ABCIAMAppServer {
             throw new Error("ABCIAM App ID not set");
         }
         let url = this.ABCIAM_URL + "/login";
-        let response = await axios.post(url, {'id_token': id_token, 'provider': provider, 'app_id':app_id});
+        let response = await axios.post(url, {'id_token': id_token, 'provider': provider, 'app_id':app_id, 'app_secret':app_secret});
         return response.data.token;
     }
 
@@ -159,7 +158,8 @@ class ABCIAMAppClient {
     constructor() {
         this.accessTokenData = null;
         this.refreshTokenData = null;
-        this.cookie_root = cookie_root ?? window.document;
+        //this.cookie_root = cookie_root ?? window.document;
+        this.cookie_root = window.document;
         this.serverURL = "";
         this.loginRoute = "/login";
         this.logoutRoute = "/logout";
@@ -244,7 +244,7 @@ class ABCIAMAppClient {
         this.cookie_root = key + "=" + value + "; expires=" + expiryDate;
     }
 }
-export {
+export default {
     ABCIAM,
     ABCIAMAppServer,
     ABCIAMAppClient
