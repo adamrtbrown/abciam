@@ -1,7 +1,11 @@
 import express from 'express'
 import dotenv from 'dotenv'
 import bodyParser from 'body-parser'
+<<<<<<< HEAD
 import abciam from './abciam/ABCIAM.js'
+=======
+import ABCIAM from './abciam/ABCIAM.js'
+>>>>>>> origin/package_start
 
 dotenv.config({path: './.env'});
 
