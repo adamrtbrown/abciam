@@ -1,27 +1,49 @@
-import uuid from 'uuid';
-import DB from '../tools/db.mjs'
+import uuid from 'uuidv4';
+import DB from '../tools/db.js'
 import axios from 'axios'
 import jwt from 'jsonwebtoken'
 import jwkToPem from 'jwk-to-pem'
+
 class ABCIAM {
     constructor(app_id, app_secret) {
-        this.app_id = validateAppId(app_id, app_secret);
-        this.database_driver = null;
+        this.app_id = this.validateAppId(app_id, app_secret);
+        this.google_config_url = "https://accounts.google.com/.well-known/openid-configuration";
     }
+
     async login(id_token, provider, app_id) {
         let return_default = {'token': false};
         try{
-            console.log("ID TOKEN:\n",jwt.decode(id_token, {complete:true}));
+            //console.log("ID TOKEN:\n",jwt.decode(id_token, {complete:true}));
             await this.verifyIDToken(id_token, provider);
-            await this.verifyAppId(app_id);
-            let user = this.getUser();
-            let token = this.getToken(user);
+            //await this.verifyAppId(app_id);
+            let user = await this.getUser();
+            console.log("USER", user);
+            let token = await this.getToken(user);
             return token;
         }
         catch(err) {
             return err;
         }
     }
+    async validateAppId(app_id, app_secret){
+        let verified = false;
+        this.db = new DB();
+        let query = "SELECT `app_secret` FROM `apps` WHERE `app_id` = ? AND `app_secret` = ? LIMIT 1";
+        console.log("DB:" , this.db);
+
+        let result = await this.db.query(query, [app_id,app_secret]);
+        let record = result.results;
+        if(record.length !== 0) {
+          this.app_id = app_id;
+          this.app_secret = record[0].app_secret;
+          verified = true;
+        }
+        if(!verified) {
+          throw new Error("Invalid App ID");
+        }
+        return verified;
+      }
+
     async verifyIDToken(id_token, provider) {
         return new Promise(async (resolve)=> {
             let uvt = "";
@@ -59,7 +81,7 @@ class ABCIAM {
         
             if (!key_ob[kid]) {
                 if (provider === 'google') {
-                    let http_resp = await axios.get(this.google_config);
+                    let http_resp = await axios(this.google_config_url);
                     let config = http_resp.data;
                     http_resp = await axios.get(config.jwks_uri);
                     let keys = http_resp.data.keys;
@@ -84,30 +106,32 @@ class ABCIAM {
         });
     }
     async getUser() {
-        if(!this.user_id || !this.app_id) {
+        if (!this.user_id || !this.app_id) {
             throw new Error("Getting user before verifying token or app.");
         }
         let user = await this.retrieveUser(this.user_id, this.app_id);
         if (user === false) {
             user = await this.createUser(this.user_id, this.app_id);
         }
+        console.log("GOT USER", user);
         return user;
     }
     
-      async retrieveUser(user_id, app_id) {
+    async retrieveUser(user_id, app_id) {
         let user = false;
         let query = "SELECT uid FROM `users` WHERE `app_id` = ? AND `user_id` = ? LIMIT 1";
         let result = await this.db.query(query, [app_id, user_id]);
         let record = result.results;
-        console.log(result);
+        
         if(record.length !== 0) {
-            user = record[0];
+            user = record[0].uid;
         }
+        console.log("RETRIEVING USER", user);
         return user;
     }
     
     async createUser(user_id, app_id) {
-        let unique_id = uuid.v4();
+        let unique_id = uuid.uuid();
         let query = "INSERT INTO users(uid, app_id, user_id) VALUES (?,?,?)";
         let result = await this.db.query(query, [unique_id, app_id, user_id]);
         if(result.error) {
@@ -115,6 +139,20 @@ class ABCIAM {
         }
         return {"uuid": unique_id}
     }
+    async getToken(user) {
+        let expiry = Math.round(new Date().getTime() / 1000) + 864000;
+        let claims = {
+            'user': user,
+            'exp': expiry,
+            'iat': Math.round(new Date().getTime() / 1000),
+            'sub' : "refresh"
+        }
+        let result = await this.db.query('SELECT `latest` FROM `signing_keys` LIMIT 1');
+        let key = result.results[0].latest;
+        let token = jwt.sign(claims, key, {algorithm: 'HS256'});
+        return token;
+    }
+
     certToPEM(cert) {
         let parts = cert.split("-----");
         let header = "-----" + parts[1] + "-----\n";
@@ -123,7 +161,7 @@ class ABCIAM {
         cert = header + body + footer;
         return cert;
     }
-    get db(){
+    get db() {
         if(this.database_driver === null) {
             this.database_driver = new DB();
         } 
@@ -132,6 +170,8 @@ class ABCIAM {
     set db(driver) {
         this.database_driver = driver;
     }
+
+    
     //request handler
     //validate login id_token
     //create user
@@ -142,20 +182,49 @@ class ABCIAM {
 }
 
 class ABCIAMAppServer {
-    constructor() {
+    constructor(config) {
         this.refreshToken = null;
         this.accessToken = null;
-        this.ABCIAM_URL = "";
-        this.app_id_data = null;
+        this.ABCIAM_URL = (config.url) ? config.url : "";
+        this.app_id_data = (config.app_id) ? config.app_id : null;
+        this.app_secret_data = (config.app_secret) ? config.app_secret : null;
+        console.log("Created ABCIAMAppServer from ", config);
     }
 
     async login(id_token, provider) {
         if(this.app_id === null) {
             throw new Error("ABCIAM App ID not set");
         }
-        let url = this.ABCIAM_URL + "/login";
-        let response = await axios.post(url, {'id_token': id_token, 'provider': provider, 'app_id':app_id, 'app_secret':app_secret});
-        return response.data.token;
+        try {
+            console.log("Getting token...");
+            let config = {
+                url: "token",
+                baseURL: this.ABCIAM_URL,
+                method: "get",
+                params: {
+                    'id_token': id_token,
+                    'provider': provider,
+                    'app_id': this.app_id,
+                    'app_secret': this.app_secret
+                }
+            }
+            console.log(config);
+            let response = await axios(config);
+            return response.data.token;
+        } catch (err) {
+            console.log(err);
+            throw new Error("ABCIAMAppServer login error:", err);
+        }
+    }
+
+    async logout() {
+        let url = this.ABCIAM_URL + "token";
+        let response = await axios.delete(url, {data:{token: this.refreshToken}});
+    }
+
+    async refresh() {
+        let url = this.ABCIAM_URL + "token";
+        let response = await axios.post(url, {data: {token: this.refreshToken}});
     }
 
     set app_id(app_id) {
@@ -164,47 +233,98 @@ class ABCIAMAppServer {
     get app_id() {
         return this.app_id_data;
     }
+    set app_secret(app_secret) {
+        this.app_secret_data = app_id;
+    }
+    get app_secret() {
+        return this.app_secret_data;
+    }
     //login // passthrough to ciam
     //logout //passthrough to ciam
     //refresh // refreshes token from CIAM
 }
-
-import axios from 'axios';
 class ABCIAMAppClient {
-    constructor() {
+    constructor(config) {
         this.accessTokenData = null;
         this.refreshTokenData = null;
         //this.cookie_root = cookie_root ?? window.document;
         this.cookie_root = window.document;
-        this.serverURL = "";
-        this.loginRoute = "/login";
-        this.logoutRoute = "/logout";
-        this.refreshRoute = "/refresh";
+        this.serverURL = (config.url) ? config.url : "";
+        this.resource = (config.resource) ? config.resource : "token";
+        console.log("ABCIAM client constructed.");
     }
+    get loginState() {
+        let decoded = jwt.decode(this.refreshToken);
+    }
+    
     async login(id_token, provider){
-        let url = this.serverURL + this.loginRoute;
-        let response = await axios.post(url,{'id_token' : id_token, 'provider' : provider});
-        if(response.data) {
+        console.log("Client logging in...");
+        let url = this.serverURL + this.resource;
+        let config = {
+            url: this.resource,
+            baseURL: this.serverURL,
+            params: {
+                id_token: id_token,
+                provider: provider
+            }
+        }
+        let response = await axios(config);
+        console.log("Client Response", response);
+        if (response.data) {
             this.refreshToken = response.data.refreshToken;
             this.accessToken = response.data.accessToken;
         }
+        console.log("logged in");
     }
     async logout(all) {
-        let url = this.serverURL + this.logoutRoute;
-        let response = await axios.post(url, {'token': this.refreshToken, 'all': all});
+        let url = this.serverURL + this.resource;
+        let response = await axios.delete(url, {'token': this.refreshToken, 'all': all});
         this.setCookieValue("refresh", "", 0);
         this.setCookieValue("access", "", 0);
 
     }
     async refresh() {
-        let url = this.serverURL + this.refreshRoute;
+        let url = this.serverURL + this.resource;
         let response = await axios.post(url, {'token': this.refreshToken});
         if(this.refreshToken !== null) {
-            this.refreshToken = response.data.token
+            this.refreshToken = response.data.refreshToken;
+            this.accessToken = response.data.accessToken;
         }
         // or need to log in
         
     }
+    isTokenExpired(token, time) {
+        let now = Math.round(new Date().getTime() / 1000);
+        if(time) {
+            now += time;
+        }
+        try {
+            let decoded = jwt.decode(this.accessToken);
+            if(decoded.exp <= now) {
+                throw new Error("Access token expired.")
+            }
+            return true;
+        } catch (err) {
+            return false;
+        }
+    }
+    async request(config) {
+        if (!isTokenExpired(this.refreshToken)) {
+            if(isTokenExpired(this.accessToken) || this.isTokenExpired(this.refreshToken, 30 * 60)) {
+                await this.refresh();
+            }
+        } else {
+            //signal logged out, event?
+        }
+        
+        if(!config.headers){
+            config.headers = {};
+        }
+        config.headers.Authorization = "Bearer " + this.accessToken;
+        let response = await axios(config);
+        return response;
+    }
+
     get refreshToken() {
         if(this.refreshTokenData === null) {
             this.refreshTokenData = this.getCookieValue("refresh");
@@ -213,6 +333,7 @@ class ABCIAMAppClient {
     }
     set refreshToken(token) {
         this.refreshTokenData = token;
+        console.log("setting refresh:", token);
         let decoded = this.decode(token);
         this.setCookieValue("refresh", token, decoded.payload.exp);
     }
@@ -236,7 +357,7 @@ class ABCIAMAppClient {
     }
     
     decode(key) {
-        let jwtParts = this.refresh.split(".");
+        let jwtParts = this.refreshToken.split(".");
         return {
             header: JSON.parse(atob(jwtParts[0])),
             payload: JSON.parse(atob(jwtParts[1])),
@@ -260,11 +381,11 @@ class ABCIAMAppClient {
         this.cookie_root = key + "=" + value + "; expires=" + expiryDate;
     }
 }
-export default {
+export {
     ABCIAM,
     ABCIAMAppServer,
     ABCIAMAppClient
-}
+};
 
     /*
     1. login

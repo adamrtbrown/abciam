@@ -119,7 +119,7 @@ class ABCIAM {
   
   async verifyAppId(app_id){
     let verified = false;
-    let query = "SELECT `app_secret` FROM `apps` WHERE `app_id` = ? LIMIT 1";
+    let query = "SELECT `app_secret` FROM `app` WHERE `app_id` = ? LIMIT 1";
     let result = await this.db.query(query, [app_id]);
     let record = result.results;
     if(record.length !== 0) {

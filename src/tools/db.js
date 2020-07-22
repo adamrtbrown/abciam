@@ -3,6 +3,7 @@ import mysql from 'mysql';
 class DB {
   constructor() {
     this.conn = false;
+    this.test = 1;
   }
 
   async createConnection() {

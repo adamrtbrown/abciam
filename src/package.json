@@ -2,7 +2,7 @@
   "name": "abciam",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "abciam/ABCIAM.js",
   "scripts": {
     "test": "jest",
     "dev": "node --experimental-modules app_server.mjs"
@@ -20,7 +20,7 @@
     "jwk-to-pem": "^2.0.3",
     "mysql": "^2.18.1",
     "url": "^0.11.0",
-    "uuid": "^7.0.2"
+    "uuidv4": "^6.2.0"
   },
   "type": "module",
   "exports": {
