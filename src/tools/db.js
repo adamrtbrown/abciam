@@ -7,15 +7,15 @@ class DB {
   }
 
   async createConnection() {
+    let config = {
+      host: process.env.DB_HOST,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_DB
+    }
     return new Promise(
       (resolve, reject) => {
-        var conn = mysql.createConnection({
-          host: process.env.DB_HOST,
-          user: process.env.DB_USER,
-          password: process.env.DB_PASSWORD,
-          database: process.env.DB_DB
-        });
-        
+        var conn = mysql.createConnection(config);
         conn.connect(function(err) {
           if (err) throw err;
           resolve(conn)
@@ -28,6 +28,12 @@ class DB {
       if(this.conn === false) {
         try {
           this.conn = await this.createConnection();
+          this.conn.on('error', (err)=>{
+            if(err.code === 'PROTOCOL_CONNECTION_LOST') {
+              console.log("connection closed");
+              this.conn = false;
+            }
+          });
         } catch(err) {
           console.error("DB Connection Error: ", err);
           throw err;

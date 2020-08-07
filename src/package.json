@@ -5,7 +5,8 @@
   "main": "abciam/ABCIAM.js",
   "scripts": {
     "test": "jest",
-    "dev": "node --experimental-modules app_server.mjs"
+    "server": "node --experimental-modules app_server.js",
+    "keygen": "node --experimental-modules ./abciam/keygen.js"
   },
   "author": "",
   "license": "ISC",
@@ -17,13 +18,11 @@
     "googleapis": "^48.0.0",
     "http": "0.0.0",
     "jsonwebtoken": "^8.5.1",
-    "jwk-to-pem": "^2.0.3",
+    "jwk-to-pem": "^2.0.4",
     "mysql": "^2.18.1",
     "url": "^0.11.0",
     "uuidv4": "^6.2.0"
   },
-  "type": "module",
-  "exports": {
-    "./abciam": "./abciam/abciam.mjs"
-  }
+  "type": "module"
+  
 }

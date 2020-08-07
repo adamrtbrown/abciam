@@ -13,7 +13,7 @@ app.use(function(req, res, next){
   next();
 })
 app.use(bodyParser.urlencoded({extended:false}));
-app.use(bodyParser.json());
+app.use(express.json());
 app.use(express.static('build'))
 app.use(function(req, resp, next){
   console.log("Request: ", req.method, req.originalUrl, req.body);
@@ -43,11 +43,17 @@ app.get('/token', async function(req, res){
 });
 
 app.delete('/token', function(req, res){
+  let app_id = req.body.app_id;
+  let app_secret = req.body.app_secret;
+  let abc = new ABCIAM(app_id, app_secret);
+  abc.deleteToken(req.body.token, req.body.all);
   console.log("logout");
+  res.end();
 });
 
 app.post('/token', function(req, res){
   console.log("refresh");
+  res.end();
 });
 
 app.listen(port, () => console.log(`Listening on ${port}`));

@@ -1,7 +1,6 @@
 import DB from '../tools/db.js';
 import dotenv from 'dotenv';
-const environment = dotenv.config({path: './src/.env'});
-
+const environment = dotenv.config({path: '.env'});
 const keylen = 4096;
 
 let db = new DB();
