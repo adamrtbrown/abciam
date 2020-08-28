@@ -271,9 +271,9 @@ class ABCIAMAppServer {
         let response = await axios.delete(url, {data:data});
     }
 
-    async refresh() {
+    async refresh(token) {
         let url = this.ABCIAM_URL + "token";
-        let response = await axios.post(url, {data: {token: this.refreshToken}});
+        let response = await axios.post(url, {data: {token: token}});
     }
 
     async provisionUser(token) {

@@ -61,10 +61,10 @@ class ABCIAMClient {
         let data = response.json();
         if(this.refreshToken !== null) {
             this.refreshToken = data.refreshToken;
-            this.accessToken = data.accessToken;
         }
-        // or need to log in
-        
+        return {
+            refresh: data.refreshToken
+        }
     }
     
     async request(config) {
