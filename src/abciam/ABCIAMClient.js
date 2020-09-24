@@ -8,18 +8,22 @@ class ABCIAMClient {
         this.resource = (config.resource) ? config.resource : "token";
     }
     get isLoggedIn() {
-        if(this.refreshTokenData === null) {
-            return false;
+        let loggedIn = this.refreshToken || !this.isTokenExpired(this.refreshToken);
+        if(!loggedIn) {
+            this.logout();
         }
-        return !this.isTokenExpired(this.refreshToken);
+        return loggedIn;
     }
 
     get provider() {
+        if(!this.refreshToken) {
+            return null;
+        }
         let decoded = this.decode(this.refreshToken);
         return decoded.payload.provider;
     }
     
-    async login(id_token, provider){
+    async login(id_token, provider) {
         let url = this.serverURL + this.resource;
         url += "?id_token=" + encodeURIComponent(id_token);
         url += "&provider=" + encodeURIComponent(provider);
@@ -36,6 +40,12 @@ class ABCIAMClient {
         console.log("logged In via ", provider);
     }
     async logout(all) {
+        if(this.refreshToken === null) {
+            this.accessToken = null;
+            console.log("ABCIAM: Already logged out");
+            return;
+        } 
+        
         let url = this.serverURL + this.resource;
         let config = {
             method: "delete",
@@ -44,10 +54,11 @@ class ABCIAMClient {
             },
             body: JSON.stringify({'token': this.refreshToken, 'all': all}),
         }
+        this.refreshToken = null;
+        this.accessToken = null;
+
         let response = await fetch(url, config);
-        this.setCookieValue("refresh", "", 0);
-        this.setCookieValue("access", "", 0);
-        console.log("logged out");
+        console.log("ABCIAM: logged out");
 
     }
     async refresh() {
@@ -66,26 +77,6 @@ class ABCIAMClient {
             refresh: data.refreshToken
         }
     }
-    
-    async request(config) {
-        if (!this.isTokenExpired(this.refreshToken)) {
-            if(this.isTokenExpired(this.accessToken) || this.isTokenExpired(this.refreshToken, 30 * 60)) {
-                await this.refresh();
-            }
-        } else {
-            //signal logged out, event?
-        }
-        
-        if(!config.headers){
-            config.headers = {'Content-Type': 'application/json'};
-        }
-        config.headers.Authorization = "Bearer " + this.accessToken;
-        
-        let url = this.serverURL + config.url;
-        console.log("Fetching: ", url, config);
-        let response = await fetch(url, config);
-        return response;
-    }
 
     get refreshToken() {
         if(this.refreshTokenData === null) {
@@ -94,34 +85,54 @@ class ABCIAMClient {
         return this.refreshTokenData;
     }
     set refreshToken(token) {
+        let expiry = 0;
+        if(token !== null) {
+            let decoded = this.decode(token);
+            expiry = decoded.payload.exp;
+        }
         this.refreshTokenData = token;
-        let decoded = this.decode(token);
-        this.setCookieValue("refresh", token, decoded.payload.exp);
+        this.setCookieValue("refresh", token, expiry);
     }
 
     get accessToken() {
         if(this.accessTokenData === null) {
             this.accessTokenData = this.getCookieValue("access");
         }
+        if(this.isTokenExpired(this.accessTokenData)){
+            this.refresh();
+        }
         return this.accessTokenData;
     }
     set accessToken(token) {
+        let expiry = 0;
+        if(token !== null) {
+            let decoded = this.decode(token);
+            expiry = decoded.payload.exp;
+        }
+
         this.accessTokenData = token;
-        let decoded = this.decode(token);
-        this.setCookieValue("access", token, decoded.payload.exp);
+        this.setCookieValue("access", token, expiry);
     }
 
-    isTokenExpired(token) {
+    isTokenExpired(token, relative = 0) {
         if(token === null) {
             return true;
         } else {
             let decoded = this.decode(token);
             let expiry = Number(decoded.payload.exp) * 1000;
-            return (new Date().getTime() > expiry);
+            let now = new Date().getTime() + (relative * 1000);
+            let isExpired = (now > expiry);
+            console.log("Expired:", expiry, now, (expiry - now), isExpired);
+            
+            return (isExpired);
         }
     }
     
     decode(key) {
+        key = String(key).trim();
+        if(!key) {
+            return null;
+        }
         let jwtParts = key.split(".");
         return {
             header: JSON.parse(atob(jwtParts[0])),

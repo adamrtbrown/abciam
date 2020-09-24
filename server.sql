@@ -50,6 +50,11 @@ CREATE TABLE `users` (
   KEY `app_id` (`app_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
+CREATE TABLE `tokens` (
+  `user_id` bigint NOT NULL,
+  `sig` varchar(256) NOT NULL,
+  FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
+);
 
 -- 2020-08-28 19:43:32
 

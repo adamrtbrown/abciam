@@ -13,6 +13,7 @@ class DB {
       password: process.env.DB_PASSWORD,
       database: process.env.DB_DB
     }
+    console.log("config",config)
     return new Promise(
       (resolve, reject) => {
         var conn = mysql.createConnection(config);

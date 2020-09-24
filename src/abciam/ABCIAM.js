@@ -29,7 +29,7 @@ class ABCIAM {
         let verified = false;
         this.db = new DB();
         let query = "SELECT `app_secret` FROM `apps` WHERE `app_id` = ? AND `app_secret` = ? LIMIT 1";
-        console.log("DB:" , this.db);
+        //console.log("DB:" , this.db);
 
         let result = await this.db.query(query, [app_id,app_secret]);
         let record = result.results;
@@ -144,7 +144,7 @@ class ABCIAM {
         return {"uid": unique_id, "id": result.insertId}
     }
     async getToken(user, provider) {
-        let expiry = Math.round(new Date().getTime() / 1000) + 864000;
+        let expiry = Math.round(new Date().getTime() / 1000) + (24 * 60);//864000;
         let claims = {
             'user': user.uid,
             'provider': provider,
@@ -255,7 +255,7 @@ class ABCIAMAppServer {
             await this.provisionUser(response.data.token);
             return response.data.token;
         } catch (err) {
-            console.log(err);
+            //console.log(err);
             throw new Error("ABCIAMAppServer login error:", err);
         }
     }

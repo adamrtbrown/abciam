@@ -52,7 +52,7 @@ app.delete('/token', function(req, res){
 });
 
 app.post('/token', function(req, res){
-  console.log("refresh");
+  console.log("refresh", req.body.token);
   res.end();
 });
 
